@@ -3,8 +3,10 @@ import type { ProposalRepository } from '../application/ports';
 
 export class PrismaProposalRepository implements ProposalRepository {
   async findRequest(requestId: string) {
-    const row = await prisma.helpRequest.findUnique({ where: { id: requestId }, select: { id: true, authorId: true, status: true } });
-    return row;
+    return prisma.helpRequest.findUnique({
+      where: { id: requestId },
+      select: { authorId: true, title: true, status: true, hidden: true },
+    });
   }
   async findById(id: string) {
     const row = await prisma.helpProposal.findUnique({ where: { id }, include: { request: true } });
@@ -33,8 +35,13 @@ export class PrismaProposalRepository implements ProposalRepository {
   async findDuplicate(requestId: string, studentId: string) {
     return prisma.helpProposal.findFirst({ where: { requestId, studentId, status: { in: ['PENDING','ACCEPTED'] } } });
   }
-  async create(requestId: string, studentId: string, message: string) {
-    return prisma.helpProposal.create({ data: { requestId, studentId, message } });
+  async createWithNotification(input: Parameters<ProposalRepository['createWithNotification']>[0]) {
+    const { recipientId, notificationMessage, ...proposal } = input;
+    const [created] = await prisma.$transaction([
+      prisma.helpProposal.create({ data: proposal }),
+      prisma.notification.create({ data: { recipientId, type: 'PROPOSAL_RECEIVED', message: notificationMessage } }),
+    ]);
+    return created;
   }
   async reject(proposalId: string) {
     await prisma.helpProposal.update({ where: { id: proposalId }, data: { status: 'REJECTED' } });

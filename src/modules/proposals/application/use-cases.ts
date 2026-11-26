@@ -3,15 +3,26 @@ import type { ProposalRepository } from './ports';
 
 export class CreateHelpProposal {
   constructor(private repository: ProposalRepository) {}
-  async execute(actorId: string, requestId: string, message: string) {
-    if (message.trim().length < 10) throw new DomainError('Proposal message must be at least 10 characters');
+  async execute({ actorId, requestId, message, studentName }: {
+    actorId: string;
+    requestId: string;
+    message: string;
+    studentName: string | null;
+  }) {
     const request = await this.repository.findRequest(requestId);
-    if (!request) throw new DomainError('Request not found');
+    if (!request || request.hidden) throw new DomainError('Request not found');
+    if (message.trim().length < 10) throw new DomainError('Proposal message must be at least 10 characters');
     ProposalRules.cannotHelpOwnRequest(request.authorId, actorId);
     ProposalRules.requestAcceptable(request.status);
     const duplicate = await this.repository.findDuplicate(requestId, actorId);
     if (duplicate) throw new DomainError('You already submitted a proposal for this request');
-    return this.repository.create(requestId, actorId, message);
+    return this.repository.createWithNotification({
+      requestId,
+      studentId: actorId,
+      message,
+      recipientId: request.authorId,
+      notificationMessage: `${studentName} submitted a proposal for ${request.title}.`,
+    });
   }
 }
 

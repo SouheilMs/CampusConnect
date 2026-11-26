@@ -1,11 +1,11 @@
-import { auth } from '@/presentation/auth';
+import { getCurrentSession } from '@/presentation/server/access';
 import { redirect } from 'next/navigation';
-import { campusApplication } from '@/presentation/server/services';
+import { moderationService } from '@/presentation/server/services';
 
 export default async function Admin() {
-  const session = await auth();
+  const session = await getCurrentSession();
   if (!session || session.user.role !== 'ADMIN') redirect('/dashboard');
-  const { users, requestCount, reports } = await campusApplication.getAdminData();
+  const { users, requestCount, reports } = await moderationService.getAdminData();
 
   return <div>
     <h1 className="text-2xl font-bold">Administration</h1>
@@ -20,9 +20,9 @@ export default async function Admin() {
         <div><b>{user.name}</b><p className="text-xs text-slate-500">{user.email} · {user.role}</p></div>
         <form action={async () => {
           'use server';
-          const current = await auth();
+          const current = await getCurrentSession();
           if (!current || current.user.role !== 'ADMIN') throw new Error('Unauthorized');
-          await campusApplication.toggleAccountStatus(user.id);
+          await moderationService.toggleAccountStatus(user.id);
           redirect('/admin');
         }}>
           <button className="rounded-lg border px-3 py-2 text-xs">{user.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}</button>
@@ -35,9 +35,9 @@ export default async function Admin() {
         <div><b>{report.request?.title || 'Publication'}</b><p className="text-sm text-slate-500">{report.reason} · reported by {report.reporter.name} · {report.status}</p></div>
         {report.status === 'PENDING' && <form action={async () => {
           'use server';
-          const current = await auth();
+          const current = await getCurrentSession();
           if (!current || current.user.role !== 'ADMIN') throw new Error('Unauthorized');
-          await campusApplication.resolveReport(report.id, current.user.id);
+          await moderationService.resolveReport(report.id, current.user.id);
           redirect('/admin');
         }}>
           <button className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white">Hide &amp; resolve</button>

@@ -1,15 +1,15 @@
 import Link from 'next/link';
 import { ArrowRight, Bell, CalendarDays, MessageSquareText, Plus, Search, Star, Users } from 'lucide-react';
-import { auth } from '@/presentation/auth';
+import { getCurrentSession } from '@/presentation/server/access';
 import { redirect } from 'next/navigation';
-import { campusApplication } from '@/presentation/server/services';
+import { dashboardQueries } from '@/presentation/server/services';
 
 export default async function Dashboard() {
-  const session = await auth();
+  const session = await getCurrentSession();
   if (!session) redirect('/login');
 
   const id = session.user.id;
-  const data = await campusApplication.getDashboard(id);
+  const data = await dashboardQueries.getDashboard(id);
   const { sessions, notifications } = data;
   const stats = [
     { label: 'My requests', value: data.requestCount, icon: MessageSquareText, tone: 'bg-indigo-50 text-indigo-700' },

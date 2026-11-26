@@ -1,20 +1,20 @@
-import { auth } from '@/presentation/auth';
+import { getCurrentSession } from '@/presentation/server/access';
 import { redirect } from 'next/navigation';
-import { campusApplication } from '@/presentation/server/services';
+import { accountService } from '@/presentation/server/services';
 
 export default async function Profile() {
-  const session = await auth();
+  const session = await getCurrentSession();
   if (!session) redirect('/login');
-  const { user, skills } = await campusApplication.getProfile(session.user.id);
+  const { user, skills } = await accountService.getProfile(session.user.id);
   const profile = user?.profile;
 
   return <div className="mx-auto max-w-2xl">
     <h1 className="text-2xl font-bold">Student profile</h1>
     <form action={async formData => {
       'use server';
-      const current = await auth();
+      const current = await getCurrentSession();
       if (!current) redirect('/login');
-      await campusApplication.saveProfile({
+      await accountService.saveProfile({
         userId: current.user.id,
         name: String(formData.get('name')),
         specialty: String(formData.get('specialty')),

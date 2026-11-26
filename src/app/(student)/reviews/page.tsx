@@ -1,11 +1,11 @@
-import { auth } from '@/presentation/auth';
+import { getCurrentSession } from '@/presentation/server/access';
 import { redirect } from 'next/navigation';
-import { campusApplication } from '@/presentation/server/services';
+import { sessionService } from '@/presentation/server/services';
 
 export default async function Reviews() {
-  const session = await auth();
+  const session = await getCurrentSession();
   if (!session) redirect('/login');
-  const sessions = await campusApplication.getCompletedSessionsForReview(session.user.id);
+  const sessions = await sessionService.getCompletedSessionsForReview(session.user.id);
 
   return <div>
     <h1 className="text-2xl font-bold">Session reviews</h1>
@@ -19,9 +19,9 @@ export default async function Reviews() {
         <h2 className="font-bold">{item.request.title}</h2>
         {alreadyReviewed ? <p className="mt-3 text-sm text-emerald-600">Review submitted.</p> : <form action={async formData => {
           'use server';
-          const current = await auth();
+          const current = await getCurrentSession();
           if (!current) redirect('/login');
-          await campusApplication.submitReview({
+          await sessionService.submitReview({
             sessionId: item.id,
             reviewerId: current.user.id,
             reviewerName: current.user.name || 'A student',

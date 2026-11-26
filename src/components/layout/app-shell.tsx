@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { Bell, LogOut } from 'lucide-react';
-import { auth, signOut } from '@/presentation/auth';
+import { signOut } from '@/presentation/auth';
+import { getCurrentSession } from '@/presentation/server/access';
 import { AppNavigation } from '@/components/layout/app-navigation';
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+  const session = await getCurrentSession();
   const admin = session?.user.role === 'ADMIN';
 
   return (

@@ -1,17 +1,18 @@
-import { auth } from '@/presentation/auth';
+import { getCurrentSession } from '@/presentation/server/access';
 import { redirect } from 'next/navigation';
-import { campusApplication } from '@/presentation/server/services';
+import { requestService } from '@/presentation/server/services';
 
 export default async function NewRequest() {
-  const subjects = await campusApplication.listSubjects();
+  if (!(await getCurrentSession())) redirect('/login');
+  const subjects = await requestService.listSubjects();
 
   return <div className="mx-auto max-w-2xl">
     <h1 className="text-2xl font-bold">Publish a help request</h1>
     <form action={async formData => {
       'use server';
-      const session = await auth();
+      const session = await getCurrentSession();
       if (!session) redirect('/login');
-      await campusApplication.createRequest({
+      await requestService.createRequest({
         title: String(formData.get('title')).trim(),
         description: String(formData.get('description')).trim(),
         subject: String(formData.get('subject')),

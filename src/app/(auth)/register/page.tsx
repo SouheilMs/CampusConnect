@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { signIn } from '@/presentation/auth';
-import { campusApplication, passwordHasher } from '@/presentation/server/services';
+import { accountService } from '@/presentation/server/services';
 
 export default function Register() {
   return (
@@ -33,7 +33,7 @@ export default function Register() {
             const name = String(formData.get('name'));
             const email = String(formData.get('email'));
             const password = String(formData.get('password'));
-            await campusApplication.register({ name, email, password }, passwordHasher);
+            await accountService.register({ name, email, password });
             await signIn('credentials', { email: email.trim().toLowerCase(), password, redirectTo: '/dashboard' });
           }} className="mt-8 space-y-5">
             <label className="control-label">

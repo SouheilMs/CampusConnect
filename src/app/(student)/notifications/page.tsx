@@ -1,20 +1,20 @@
-import { auth } from '@/presentation/auth';
+import { getCurrentSession } from '@/presentation/server/access';
 import { redirect } from 'next/navigation';
-import { campusApplication } from '@/presentation/server/services';
+import { notificationRepository } from '@/presentation/server/services';
 
 export default async function Notifications() {
-  const session = await auth();
+  const session = await getCurrentSession();
   if (!session) redirect('/login');
-  const notifications = await campusApplication.getNotifications(session.user.id);
+  const notifications = await notificationRepository.getNotifications(session.user.id);
 
   return <div>
     <div className="flex justify-between">
       <h1 className="text-2xl font-bold">Notifications</h1>
       <form action={async () => {
         'use server';
-        const current = await auth();
+        const current = await getCurrentSession();
         if (!current) redirect('/login');
-        await campusApplication.markAllNotificationsRead(current.user.id);
+        await notificationRepository.markAllNotificationsRead(current.user.id);
         redirect('/notifications');
       }}>
         <button className="rounded-lg border px-3 py-2 text-sm">Mark all read</button>
@@ -23,9 +23,9 @@ export default async function Notifications() {
     <div className="mt-6 space-y-3">
       {notifications.map(notification => <form key={notification.id} action={async () => {
         'use server';
-        const current = await auth();
+        const current = await getCurrentSession();
         if (!current) redirect('/login');
-        await campusApplication.markNotificationRead(notification.id, current.user.id);
+        await notificationRepository.markNotificationRead(notification.id, current.user.id);
         redirect('/notifications');
       }}>
         <button className={`w-full rounded-xl border p-4 text-left ${notification.read ? 'bg-white' : 'border-indigo-200 bg-indigo-50'}`}>
