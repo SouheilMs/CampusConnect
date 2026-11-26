@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { z } from 'zod';
-import { campusApplication, passwordHasher } from '@/presentation/server/services';
+import { accountService } from '@/presentation/server/services';
 
 const credentialsSchema = z.object({ email: z.email(), password: z.string().min(6) });
 
@@ -13,7 +13,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     authorize: async credentials => {
       const parsed = credentialsSchema.safeParse(credentials);
       if (!parsed.success) return null;
-      return campusApplication.authenticate(parsed.data, passwordHasher);
+      return accountService.authenticate(parsed.data);
     },
   })],
   callbacks: {

@@ -6,6 +6,9 @@ const noOuterLayerImports = {
     group: [
       '**/infrastructure/**',
       '@/infrastructure/**',
+      '**/presentation/**',
+      '**/app/**',
+      '**/components/**',
       '@prisma/client',
       'bcryptjs',
       'next',
@@ -21,7 +24,6 @@ export default defineConfig([
   ...nextVitals,
   {
     files: [
-      'src/application/**/*.{ts,tsx}',
       'src/domain/**/*.{ts,tsx}',
       'src/modules/**/application/**/*.{ts,tsx}',
       'src/modules/**/domain/**/*.{ts,tsx}',
@@ -29,7 +31,8 @@ export default defineConfig([
     rules: { 'no-restricted-imports': ['error', noOuterLayerImports] },
   },
   {
-    files: ['src/app/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'src/presentation/auth.ts'],
+    files: ['src/app/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'src/presentation/**/*.{ts,tsx}'],
+    ignores: ['src/presentation/server/services.ts'],
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [{

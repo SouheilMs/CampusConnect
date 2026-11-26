@@ -1,12 +1,12 @@
-import { auth } from '@/presentation/auth';
+import { getCurrentSession } from '@/presentation/server/access';
 import { notFound, redirect } from 'next/navigation';
-import { campusApplication, proposalApplication } from '@/presentation/server/services';
+import { moderationService, proposalService, requestService } from '@/presentation/server/services';
 
 export default async function RequestDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await auth();
+  const session = await getCurrentSession();
   if (!session) redirect('/login');
-  const request = await campusApplication.getRequestDetails(id);
+  const request = await requestService.getRequestDetails(id, session.user.id);
   if (!request || request.hidden) notFound();
   const owner = session.user.id === request.authorId;
 
@@ -21,9 +21,9 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
     </div>
     {!owner && <form action={async formData => {
       'use server';
-      const current = await auth();
+      const current = await getCurrentSession();
       if (!current) redirect('/login');
-      await campusApplication.submitReport({
+      await moderationService.submitReport({
         reporterId: current.user.id,
         requestId: id,
         reason: String(formData.get('reason')) as 'INAPPROPRIATE' | 'SPAM' | 'HARASSMENT' | 'OTHER',
@@ -42,25 +42,25 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
         {proposal.status === 'PENDING' && <div className="flex gap-2">
           <form action={async () => {
             'use server';
-            const current = await auth();
+            const current = await getCurrentSession();
             if (!current) redirect('/login');
-            await proposalApplication.accept.execute(current.user.id, proposal.id);
+            await proposalService.accept.execute(current.user.id, proposal.id);
             redirect(`/requests/${id}`);
           }}><button className="rounded-lg bg-indigo-600 px-3 py-2 text-sm text-white">Accept</button></form>
           <form action={async () => {
             'use server';
-            const current = await auth();
+            const current = await getCurrentSession();
             if (!current) redirect('/login');
-            await proposalApplication.reject.execute(current.user.id, proposal.id);
+            await proposalService.reject.execute(current.user.id, proposal.id);
             redirect(`/requests/${id}`);
           }}><button className="rounded-lg border px-3 py-2 text-sm">Reject</button></form>
         </div>}
       </div>) : <p className="rounded-xl border border-dashed bg-white p-8 text-center text-slate-500">No proposals yet.</p>}
     </div> : request.status === 'OPEN' && <form action={async formData => {
       'use server';
-      const current = await auth();
+      const current = await getCurrentSession();
       if (!current) redirect('/login');
-      await campusApplication.submitProposal({
+      await proposalService.create.execute({
         actorId: current.user.id,
         requestId: id,
         message: String(formData.get('message')),

@@ -1,7 +1,7 @@
 import type { ProposalStatus } from '../domain/entities';
 export interface ProposalRecord { id: string; requestId: string; studentId: string; status: ProposalStatus }
 export interface ProposalRepository {
-  findRequest(requestId: string): Promise<{ id: string; authorId: string; status: string } | null>;
+  findRequest(requestId: string): Promise<{ authorId: string; title: string; status: string; hidden: boolean } | null>;
   findById(id: string): Promise<(ProposalRecord & { request: { id: string; authorId: string; status: string }; studentId: string }) | null>;
   acceptAtomically(input: {
     proposalId: string;
@@ -19,6 +19,12 @@ export interface ProposalRepository {
     }>;
   }): Promise<void>;
   findDuplicate(requestId: string, studentId: string): Promise<ProposalRecord | null>;
-  create(requestId: string, studentId: string, message: string): Promise<ProposalRecord>;
+  createWithNotification(input: {
+    requestId: string;
+    studentId: string;
+    message: string;
+    recipientId: string;
+    notificationMessage: string;
+  }): Promise<ProposalRecord>;
   reject(proposalId: string): Promise<void>;
 }

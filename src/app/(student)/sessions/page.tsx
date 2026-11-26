@@ -1,11 +1,11 @@
-import { auth } from '@/presentation/auth';
+import { getCurrentSession } from '@/presentation/server/access';
 import { redirect } from 'next/navigation';
-import { campusApplication } from '@/presentation/server/services';
+import { sessionService } from '@/presentation/server/services';
 
 export default async function Sessions() {
-  const session = await auth();
+  const session = await getCurrentSession();
   if (!session) redirect('/login');
-  const sessions = await campusApplication.getSessions(session.user.id);
+  const sessions = await sessionService.getSessions(session.user.id);
 
   return (
     <div>
@@ -26,18 +26,18 @@ export default async function Sessions() {
               <div className="mt-4 flex gap-2">
                 <form action={async () => {
                   'use server';
-                  const current = await auth();
+                  const current = await getCurrentSession();
                   if (!current) redirect('/login');
-                  await campusApplication.transitionSession(s.id, current.user.id, 'COMPLETED');
+                  await sessionService.transitionSession(s.id, current.user.id, 'COMPLETED');
                   redirect('/sessions');
                 }}>
                   <button className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">Complete</button>
                 </form>
                 <form action={async () => {
                   'use server';
-                  const current = await auth();
+                  const current = await getCurrentSession();
                   if (!current) redirect('/login');
-                  await campusApplication.transitionSession(s.id, current.user.id, 'CANCELLED');
+                  await sessionService.transitionSession(s.id, current.user.id, 'CANCELLED');
                   redirect('/sessions');
                 }}>
                   <button className="rounded-lg border px-3 py-2 text-sm">Cancel</button>

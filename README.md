@@ -90,68 +90,68 @@ Versions and scripts are defined in [`package.json`](./package.json), and the Po
 
 ## Architecture
 
-The project uses a **feature-oriented, Clean Architecture-inspired structure**, but the separation is applied selectively rather than uniformly across every feature.
-
-- The proposal workflow has a domain layer for proposal rules, an application layer for use cases and repository ports, and an infrastructure adapter backed by Prisma.
-- The matching score calculator is framework-independent domain logic.
-- Next.js App Router pages and server actions provide the presentation layer. Several page actions access Prisma directly rather than going through application use cases.
-- Prisma maps application data to PostgreSQL using the schema in [`prisma/schema.prisma`](./prisma/schema.prisma).
+CampusConnect is a modular monolith. Next.js serves the interface and Auth.js sessions, and each feature owns its application contracts and Prisma adapter. All modules use the same PostgreSQL database. The server composition root in [`services.ts`](./src/presentation/server/services.ts) wires adapters and use cases together.
 
 ```mermaid
 flowchart LR
-    Browser[Browser]
-    Pages[Next.js App Router pages]
-    Actions[Server actions and Auth.js route]
-    Auth[Credentials authentication<br/>bcrypt password comparison<br/>JWT session]
-    UseCases[Proposal application use cases]
-    Rules[Proposal domain rules]
-    Ports[Proposal repository port]
-    Adapter[Prisma proposal repository]
-    Matching[Matching domain calculator]
-    Prisma[Prisma Client]
-    DB[(PostgreSQL)]
-
-    Browser --> Pages
-    Pages --> Actions
-    Actions --> Auth
-    Auth --> Prisma
-    Actions --> UseCases
-    UseCases --> Rules
-    UseCases --> Ports
-    Adapter -. implements .-> Ports
-    Actions --> Adapter
-    Pages --> Matching
-    Actions --> Prisma
-    Adapter --> Prisma
-    Prisma --> DB
+    Browser[Browser] --> Routes[Next.js pages and Server Actions]
+    Routes --> Access[Current session and account status]
+    Routes --> Services[Feature services and queries]
+    Access --> Accounts[Accounts service]
+    Accounts --> Ports[Application ports]
+    Services --> Ports
+    Services --> Rules[Domain rules and matching score]
+    Adapters[Prisma adapters] -. implement .-> Ports
+    Services -->|Runtime calls| Adapters
+    Adapters --> Prisma[Shared Prisma client]
+    Prisma --> DB[(PostgreSQL)]
 ```
 
-The diagram distinguishes the proposal use-case path from page/server-action code that directly uses Prisma. Authentication checks credentials against stored password hashes; the application data layer uses Prisma to persist users, requests, proposals, sessions, reviews, reports, and notifications.
+| Module | Responsibility |
+| --- | --- |
+| `accounts` | Registration, credentials, current account, and profile |
+| `requests` | Publish and browse requests, and show the owner their proposals |
+| `proposals` | Submit, accept, and reject offers of help |
+| `sessions` | Manage study sessions and participant reviews |
+| `moderation` | Reports and account status changes |
+| `matching` | Candidate selection and compatibility scores |
+| `notifications` | Read notifications and update read status |
+| `dashboard` | Read the overview across several features |
+
+### How a feature runs
+
+1. A page or Server Action reads the current session. The [session helper](./src/presentation/server/access.ts) verifies the JWT identity against the current account status and role. Admin routes and actions also check the role.
+2. The route calls the feature through the composition root. Application code enforces business rules and depends on typed ports. Domain code contains rules that can run without Next.js or Prisma.
+3. The feature adapter owns the Prisma queries and transaction boundaries. For example, proposal submission saves the proposal and the owner's notification in the same transaction. Accepting an offer coordinates the proposal, request, session, and notifications in the proposal adapter.
+
+When adding a feature, put its data contracts in `application/ports.ts`, rules and orchestration in `application/` or `domain/`, and Prisma operations in `infrastructure/`. The dashboard and notifications modules expose their ports through the composition root directly because their current operations are straightforward reads and updates.
 
 ## Project structure
 
 ```text
 .
-├── prisma/
-│   ├── migrations/              # Committed PostgreSQL migration history
-│   ├── schema.prisma            # Database models, enums, and relations
-│   └── seed.ts                  # Development sample data
+├── prisma/                         # Schema and committed migrations
 ├── src/
-│   ├── app/
-│   │   ├── (admin)/             # Administrator pages
-│   │   ├── (auth)/              # Login and registration pages
-│   │   ├── (student)/           # Dashboard and student workflows
-│   │   ├── api/auth/            # Auth.js route handler
-│   │   └── page.tsx             # Public landing page
-│   ├── components/layout/       # Shared application shell and navigation
-│   ├── lib/                     # Authentication and Prisma client setup
+│   ├── app/                        # Routes, forms, and Server Actions
+│   ├── components/layout/          # Shared shell and navigation
+│   ├── domain/                     # Shared domain error
+│   ├── infrastructure/persistence/ # Shared Prisma client and development seed
 │   ├── modules/
-│   │   ├── matching/domain/     # Compatibility score calculation
-│   │   └── proposals/           # Domain, use cases, ports, Prisma adapter
-│   └── types/                   # NextAuth session type augmentation
+│   │   ├── accounts/
+│   │   ├── dashboard/
+│   │   ├── matching/               # Includes the compatibility calculator
+│   │   ├── moderation/
+│   │   ├── notifications/
+│   │   ├── proposals/              # Includes proposal domain rules
+│   │   ├── requests/
+│   │   └── sessions/
+│   ├── presentation/
+│   │   ├── auth.ts                 # Auth.js configuration
+│   │   └── server/                 # Session checks and service composition
+│   └── types/                      # Auth.js type augmentation
 ├── tests/
-│   ├── e2e/                     # Playwright browser smoke tests
-│   └── unit/                    # Proposal rule and use-case tests
+│   ├── e2e/                        # Browser smoke tests
+│   └── unit/                       # Proposal rules and use cases
 ├── docker-compose.yml
 ├── Dockerfile
 └── package.json
@@ -185,7 +185,7 @@ The diagram distinguishes the proposal use-case path from page/server-action cod
 - The generated session currently defaults to one day after acceptance, 60 minutes, and online mode with a fixed meeting URL. The acceptance interface does not currently collect scheduling or meeting details.
 - A participant may complete or cancel a scheduled session. Completing it also marks the associated request `COMPLETED`; cancellation changes the session status but does not reopen the request.
 - Reviews are presented for completed sessions. A database uniqueness constraint prevents duplicate reviews for the same session/reviewer/reviewed-student combination. Submitting a review updates the reviewed student's aggregate rating and review count.
-- Administrators can suspend or reactivate accounts. Account status is checked during credentials authentication; the code does not show a separate email-verification or password-reset flow.
+- Administrators can suspend or reactivate accounts. The application checks account status at sign-in and on protected pages and actions. The project does not implement email verification or password reset.
 - Resolving a pending request report hides the associated request and marks the report resolved in a transaction.
 - The Smart Matching calculator combines skill overlap (40%), specialty (20%), level (15%), availability (15%), and rating (10%). However, the current matching page passes an empty list of required skills, so the skill-overlap contribution is zero in that screen. Availability overlap is based on exact string comparison, while request availability is free text.
 

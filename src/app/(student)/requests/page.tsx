@@ -1,12 +1,15 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { ArrowRight, BookOpen, MessageSquareText, Search } from 'lucide-react';
-import { campusApplication } from '@/presentation/server/services';
+import { getCurrentSession } from '@/presentation/server/access';
+import { requestService } from '@/presentation/server/services';
 
 export default async function Requests({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  if (!(await getCurrentSession())) redirect('/login');
   const params = await searchParams;
   const [requests, subjects] = await Promise.all([
-    campusApplication.listRequests(params),
-    campusApplication.listSubjects(),
+    requestService.listRequests(params),
+    requestService.listSubjects(),
   ]);
 
   return (

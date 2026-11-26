@@ -1,12 +1,12 @@
-import { auth } from '@/presentation/auth';
+import { getCurrentSession } from '@/presentation/server/access';
 import { redirect } from 'next/navigation';
-import { campusApplication } from '@/presentation/server/services';
+import { matchingService } from '@/presentation/server/services';
 
 export default async function Matching({ searchParams }: { searchParams: Promise<{ requestId?: string }> }) {
-  const session = await auth();
+  const session = await getCurrentSession();
   if (!session) redirect('/login');
   const params = await searchParams;
-  const { requests, request, candidates } = await campusApplication.getMatching(session.user.id, params.requestId);
+  const { requests, request, candidates } = await matchingService.getMatching(session.user.id, params.requestId);
   if (!request) return <p className="text-slate-500">Create a help request to receive recommendations.</p>;
 
   return <div>
